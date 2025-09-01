@@ -1,50 +1,88 @@
-# Welcome to your Expo app 👋
+# Bitcoin Lens 📱🔍₿
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Camera-based OCR price scanner with live Bitcoin conversion using react-native-vision-camera and CoinGecko API.
 
-## Get started
+## Features
 
-1. Install dependencies
+- 📸 **Real-time OCR**: Detects prices in USD ($) and BRL (R$) using camera
+- ₿ **Bitcoin Conversion**: Automatically converts detected prices to Bitcoin/Satoshis
+- 🔄 **Live Updates**: Real-time Bitcoin prices from CoinGecko API
+- 🎯 **Visual Overlays**: Shows Bitcoin equivalent directly over detected prices
+- 🔄 **Toggle Units**: Switch between Bitcoin and Satoshis display
+- 📱 **Minimalist UI**: Clean, single-screen design focused on functionality
 
+## Tech Stack
+
+- **React Native** with Expo SDK 53
+- **react-native-vision-camera** - Camera functionality
+- **react-native-vision-camera-text-recognition** - OCR with coordinates
+- **TypeScript** - Type safety
+- **CoinGecko API** - Real-time Bitcoin prices
+
+## Getting Started
+
+1. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. Start the app
-
+2. **Start the development server**
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+3. **Run on device**
+   - Use Expo Development Build (recommended for camera features)
+   - Android: `npx expo run:android`
+   - iOS: `npx expo run:ios`
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+> **Note**: Camera functionality requires a physical device or development build. Expo Go has limited camera OCR support.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## How It Works
 
-## Get a fresh project
+1. **Point your camera** at any price tag or menu with USD/BRL prices
+2. **OCR detects** the currency values automatically
+3. **Bitcoin conversion** appears as overlay on detected prices
+4. **Toggle** between Bitcoin (₿) and Satoshis (sats) display
+5. **Refresh** Bitcoin prices manually via the refresh button
 
-When you're ready, run:
+## Project Structure
 
-```bash
-npm run reset-project
+```
+app/
+├── index.tsx          # Main camera screen
+└── _layout.tsx        # Navigation setup
+
+components/camera/
+├── types.ts           # TypeScript interfaces
+├── priceDetection.ts  # OCR price parsing logic
+├── bitcoinApi.ts      # CoinGecko API integration
+├── PriceOverlay.tsx   # Visual price overlays
+└── PriceList.tsx      # Detected prices sidebar
+
+components/
+├── ThemedText.tsx     # Themed text component
+└── ThemedView.tsx     # Themed view component
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Currency Format Support
 
-## Learn more
+- **USD**: $1,234.56 (comma thousands, period decimal)
+- **BRL**: R$ 1.234,56 (period thousands, comma decimal)
 
-To learn more about developing your project with Expo, look at the following resources:
+The app intelligently detects and parses both American and Brazilian number formats.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## API Integration
 
-## Join the community
+Uses [CoinGecko API](https://api.coingecko.com/) for real-time Bitcoin prices:
+- No API key required
+- Updates Bitcoin prices in BRL and USD
+- Automatic conversion calculations
 
-Join our community of developers creating universal apps.
+## Development
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Built with modern React Native practices:
+- TypeScript for type safety
+- Modular component architecture
+- Safe area handling for different devices
+- Efficient OCR coordinate-based overlays
