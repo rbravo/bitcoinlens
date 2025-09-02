@@ -1,8 +1,8 @@
 import { PriceOverlay } from '@/components/camera/PriceOverlay';
 import { ThemedText } from '@/components/ThemedText';
 import { Entypo, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import React, { useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Platform, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Image, Platform, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchBitcoinPrices } from '../components/camera/bitcoinApi';
 import { detectPrices } from '../components/camera/priceDetection';
@@ -36,6 +36,9 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   // Ref para controlar frequência de atualização (throttle 1s)
   const lastDetectionUpdateRef = useRef<number>(0);
+  const [photoMode, setPhotoMode] = useState(false);
+  const [capturedPhotoPath, setCapturedPhotoPath] = useState<string | null>(null);
+  const cameraRef = useRef<any>(null);
 
   const insets = useSafeAreaInsets();
 
@@ -75,7 +78,7 @@ export default function App() {
   }, [isCameraAvailable, hasPermission, requestPermission]);
 
   const handleTextRecognition = (data: OCRData) => {
-    if (!data) return;
+    if (!data || photoMode) return; // não atualiza quando congelado
     const now = Date.now();
     // Só atualiza no máximo 1x por segundo para evitar flicker
     if (now - lastDetectionUpdateRef.current < 1000) {
@@ -87,6 +90,33 @@ export default function App() {
     const currentPrices = bitcoinPrices.BRL > 0 ? bitcoinPrices : { BRL: 587000, USD: 108000 };
     const prices = detectPrices(data, currentPrices);
     setDetectedPrices(prices);
+  };
+
+  const togglePhotoMode = async () => {
+    if (photoMode) {
+      setPhotoMode(false);
+      setCapturedPhotoPath(null);
+      lastDetectionUpdateRef.current = 0;
+      return;
+    }
+    // tentar takePhoto do componente Camera (VisionCamera) preservando tela
+    try {
+      if (cameraRef.current?.takePhoto) {
+        const photo = await cameraRef.current.takePhoto({ flash: 'off' });
+        const raw = photo?.path || '';
+        const uri = raw.startsWith('file://') ? raw : `file://${raw}`;
+        if (uri) {
+          setCapturedPhotoPath(uri);
+        }
+      } else {
+        // fallback: sem suporte a takePhoto, apenas congela deteção sem imagem estática
+        Alert.alert('Captura não suportada', 'Congelando apenas os preços (imagem continuará ao vivo).');
+      }
+      setPhotoMode(true);
+    } catch (e) {
+      console.warn('Falha takePhoto', e);
+      Alert.alert('Erro', 'Não foi possível capturar a foto.');
+    }
   };
 
   const refreshBitcoinPrices = async () => {
@@ -209,16 +239,19 @@ export default function App() {
       <StatusBar barStyle="light-content" backgroundColor="rgba(0, 0, 0, 0.7)" translucent />
 
       <Camera
+        ref={cameraRef}
         style={StyleSheet.absoluteFill}
         device={device}
-        isActive={isCameraActive}
-        options={{
-          language: 'latin'
-        }}
+        isActive={isCameraActive && !photoMode}
+        options={{ language: 'latin' }}
         mode={'recognize'}
         frameProcessorFps={1}
+        photo={true}
         callback={handleTextRecognition}
       />
+      {photoMode && capturedPhotoPath && (
+        <Image source={{ uri: capturedPhotoPath }} style={StyleSheet.absoluteFill} resizeMode='cover' />
+      )}
 
       {/* Camera overlay */}
       {/* SafeAreaView without top edge so header background goes behind notch */}
@@ -279,6 +312,17 @@ export default function App() {
           onToggleUnit={() => setShowInSatoshis(!showInSatoshis)}
         />
       </SafeAreaView>
+      {/* Botão flutuante alterna Foto / Tempo Real */}
+      <TouchableOpacity
+        style={[styles.floatingModeButton, { bottom: detectedPrices.length ? 320 : 120 }]}
+        onPress={togglePhotoMode}
+        activeOpacity={0.85}
+      >
+        <Ionicons name={photoMode ? 'play-circle' : 'camera'} size={22} color='#fff' />
+        <ThemedText style={styles.floatingModeButtonText}>
+          {photoMode ? 'Tempo Real' : 'Modo Foto'}
+        </ThemedText>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -468,5 +512,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     textAlign: 'center',
+  },
+  floatingModeButton: {
+    position: 'absolute',
+    right: 16,
+    backgroundColor: 'rgba(247,147,26,0.92)',
+    paddingHorizontal: 14,
+    height: 46,
+    borderRadius: 23,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    zIndex: 60,
+  },
+  floatingModeButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
