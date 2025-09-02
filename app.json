@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "$(PRODUCT_NAME) needs access to your Camera to scan and recognize text."
-      }
+      },
+      "bundleIdentifier": "com.rbravo.bitcoinlens"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +22,6 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
-        "android.permission.CAMERA",
         "android.permission.CAMERA"
       ],
       "package": "com.rbravo.bitcoinlens"

@@ -1,9 +1,9 @@
 import { PriceOverlay } from '@/components/camera/PriceOverlay';
 import { ThemedText } from '@/components/ThemedText';
 import { Entypo, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, SafeAreaView, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useEffect, useState, useRef } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Platform, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchBitcoinPrices } from '../components/camera/bitcoinApi';
 import { detectPrices } from '../components/camera/priceDetection';
 import { PriceList } from '../components/camera/PriceList';
@@ -34,6 +34,8 @@ export default function App() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [showInSatoshis, setShowInSatoshis] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  // Ref para controlar frequência de atualização (throttle 1s)
+  const lastDetectionUpdateRef = useRef<number>(0);
 
   const insets = useSafeAreaInsets();
 
@@ -73,12 +75,18 @@ export default function App() {
   }, [isCameraAvailable, hasPermission, requestPermission]);
 
   const handleTextRecognition = (data: OCRData) => {
-    if (data) {
-      // Use preços padrão se ainda não carregaram
-      const currentPrices = bitcoinPrices.BRL > 0 ? bitcoinPrices : { BRL: 587000, USD: 108000 };
-      const prices = detectPrices(data, currentPrices);
-      setDetectedPrices(prices);
+    if (!data) return;
+    const now = Date.now();
+    // Só atualiza no máximo 1x por segundo para evitar flicker
+    if (now - lastDetectionUpdateRef.current < 1000) {
+      return;
     }
+    lastDetectionUpdateRef.current = now;
+
+    // Use preços padrão se ainda não carregaram
+    const currentPrices = bitcoinPrices.BRL > 0 ? bitcoinPrices : { BRL: 587000, USD: 108000 };
+    const prices = detectPrices(data, currentPrices);
+    setDetectedPrices(prices);
   };
 
   const refreshBitcoinPrices = async () => {
@@ -127,15 +135,17 @@ export default function App() {
   // Main screen with camera toggle
   if (!isCameraActive) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top','left','right']}> 
         <StatusBar barStyle="light-content" backgroundColor="rgba(0, 0, 0, 0.9)" translucent />
 
         {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 40 }]}>
-          <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <Ionicons name="logo-bitcoin" size={32} color="#f7931a" style={{ marginTop: -10, marginRight: 5}} />
-            <ThemedText style={styles.appTitle}>Bitcoin Lens</ThemedText>
-            <Entypo name="magnifying-glass" size={32} color="#f7931a" style={{ marginTop: -6, marginLeft: 5}} />
+        <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 32 : 32 }]}> 
+          <View style={{flexDirection: 'row', alignItems: 'center', paddingBottom: 10}}>
+            <Ionicons name="logo-bitcoin" size={32} color="#f7931a" 
+              style={{ marginRight: 5, marginTop: Platform.OS === 'ios' ? -6 : 0}} />
+            <ThemedText style={{...styles.appTitle, marginTop: Platform.OS === 'ios' ? 0 : -10}}>Bitcoin Lens</ThemedText>
+            <Entypo name="magnifying-glass" size={32} color="#f7931a" 
+              style={{ marginLeft: 5, marginTop: Platform.OS === 'ios' ? -6 : 0}} />
           </View>
           <ThemedText style={styles.subtitle}>
             Detecte preços e converta{'\n'}para Bitcoin em tempo real
@@ -211,9 +221,10 @@ export default function App() {
       />
 
       {/* Camera overlay */}
-      <SafeAreaView style={styles.cameraOverlay}>
-        {/* Top header */}
-        <View style={[styles.cameraHeader, { paddingTop: insets.top + 12 }]}>
+      {/* SafeAreaView without top edge so header background goes behind notch */}
+      <SafeAreaView style={styles.cameraOverlay} edges={['left','right']}>
+        {/* Top header (adds insets.top manually for content safety while background covers notch) */}
+        <View style={[styles.cameraHeader, { paddingTop: insets.top + 8 }]}> 
           <TouchableOpacity
             style={styles.closeButton}
             onPress={toggleCamera}
@@ -285,7 +296,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
+    paddingTop: 8,
   },
   subtitle: {
     fontSize: 16,
